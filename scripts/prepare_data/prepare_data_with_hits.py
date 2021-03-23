@@ -25,9 +25,9 @@ def load_id_to_hits(file_name, max_hits):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-file", type=str, required=True)
-    parser.add_argument("--output-file", type=str)
-    parser.add_argument("--hits-file", default=EXAMS_DIR/"resolved_hits.jsonl")
+    parser.add_argument("--input-file", type=str, default="prepare_data/exams/multilingual/dev.jsonl")
+    parser.add_argument("--output-file", type=str, default="prepare_data/exams/multilingual/with_hits/dev.jsonl")
+    parser.add_argument("--hits-file", default="prepare_data/exams/resolved_hits.jsonl")
     parser.add_argument("--max-hits", type=int, default=10)
 
     args = parser.parse_args()
@@ -39,16 +39,29 @@ if __name__ == "__main__":
     # load hits
     id_to_hits = load_id_to_hits(args.hits_file, max_hits)
     
-    with open(output_file, mode="w", encoding="utf-8") as f_out:
-        with open(input_file, mode="r") as f_in:
+    wrong_answer_key = []
+    with open(output_file, mode="w") as f_out:
+        with open(input_file, mode="r", encoding="utf8") as f_in:
             for line_id, line in enumerate(f_in):
+                if line_id==0:
+                    print(line)
                 if (line_id+1) % 1000 == 0:
                     print(f"{line_id + 1} questions processed")
+                    print(line)
+
                 question_item = json.loads(line.strip())
+                if question_item["answerKey"] == "@":
+                    wrong_answer_key.append(question_item["id"])
+
                 for ch in question_item["question"]["choices"]:
                     if "para" in ch:
                         del ch["para"]
                     ch["hits"] = id_to_hits[question_item["id"]][ch["label"]]
-                f_out.write(json.dumps(question_item))
+                
+                out_str = json.dumps(question_item, ensure_ascii=False)
+                f_out.write(out_str)
+                #f_out.write("тест")
                 f_out.write("\n")
+
+    print(wrong_answer_key)
 
